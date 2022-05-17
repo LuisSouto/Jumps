@@ -174,6 +174,9 @@ class ESEP(PointP):
         return np.exp(self.hb*t/(2*a)*(b-a-a*iu-fu))*f1**(self.hb/a)*f2**Q
     
     def cf_integral(self,u,x,t,Q,vectorize=True):
+        if not np.isscalar(x): x = x[-1]
+        if not np.isscalar(Q): Q = Q[-1]
+
         # Auxiliary variables
         a  = self.a
         b  = self.b
@@ -206,7 +209,7 @@ class ESEP(PointP):
             th = (np.exp(self.hb*t/(2*a)*(b-a-fu-a*iu))*(2*fu/hu)**(self.hb/a)
                   *binom(xi+self.hb/a+Q-1,xi)*(1-p)**xi)
             th[xi[:,:,0]<0,:] = 0
-            qh = hu**(-Q)*binom(Q,qi)*g**(Q-qi)*(h2)**qi
+            qh = hu**(-Q)*binom(Q,qi)*g**(Q-qi)*h2**qi
     
             return np.sum(th*qh,0)
         
@@ -223,7 +226,7 @@ class ESEP(PointP):
             th[xi[:,:,0]<0,:] = 0
     
             res = np.zeros((mQ+1,mx+1,u.size),dtype=complex)
-            res[0] = th[0]
+            res[0] = th[0]*binom(xi[0]+self.hb/a-1,xi[0])
             for i in qi:
                 res[i] = np.sum(th*bn[:,:,i-1:i]*qh[:,i-1:i,:],0)
                 

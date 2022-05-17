@@ -30,6 +30,9 @@ class HestonJD():
 
     def cumulant4(self,t):
         return self.dp.cumulant4(t)+self.jp.cumulant4_cj(t)
+
+    def cumulants_cos(self,t):
+        return np.array([self.mean(t).mean(),self.var(t),0])
     
     def simul(self,N,n,T):
         dt = T/(n-1)        
@@ -66,33 +69,33 @@ class HestonJD():
             X[:,i] = (X[:,i-1] + (r-0.5*Vp)*dt + np.sqrt(Vp)*dWS[:,i-1] 
                       +J[:,i-1]*(Nj[:,i]-Nj[:,i-1])-self.jp.eJ*I[:,i-1]*dt)
             
-        return X,V,Q    
+        return X,V,Q
 
-    def sens_an(self,T,K,v,param='a'):
-        S0 = self.S0
-        r  = self.r
-        n  = v.size 
+    def sens_an(self,S,T,K,v,param=['a']):
+        if np.isscalar(T): T = np.array([T])
+        if np.isscalar(K): K = np.array([K])
+        if np.isscalar(v[0]): v = np.array([v]).T
+
+        r  = self.dp.r
+        n  = v.shape[0]
         nT = T.size
         nK = K.size
         P  = np.zeros((n,nT,nK))
-        C  = np.zeros((n,nT,nK))
         IV = np.zeros((n,nT,nK))
-
         for i in range(n):
+            param_dict = dict(zip(param,v[i]))
+            self.jp.set_param(**param_dict)
+            x0 = np.array([0,self.dp.V0,self.jp.Q0])
             for j in range(nT):
+                # Characteristic function
+                cfs = lambda u: self.cf(u,0,0,T[j],x0)
                 for k in range(nK):
-                    # ESEP prices
-                    self.jp.set_param(**{param:v[i]})
-                    cfs = lambda u: self.cf(u,0,T[j],1,self.jp.Q0)
-
                     # Cumulants
-                    cm1   = self.mean(T[j])-np.log(K[k])
-                    cm2   = self.var(T[j])
-                    cm4   = 0 #esep.cumulant4_cj(T[j],cm,eJ)
+                    cm = self.cumulants_cos(T[j])
+                    cm[0] -= np.log(K[k])
 
-                    # COS method calls y puts
-                    C[i,j,k]  = COS.call(S0,K[k],T[j],r,cfs,[cm1,cm2,cm4])
-                    P[i,j,k]  = COS.put(S0,K[k],T[j],r,cfs,[cm1,cm2,cm4])
-                    IV[i,j,k] = bs.implied_volatility(P[i,j,k],S0,K[k],T[j],r,'p') 
+                    # COS method puts
+                    P[i,j,k]  = COS.vanilla(S,K[k],T[j],r,cfs,cm,-1)
+                    IV[i,j,k] = bs.implied_volatility(P[i,j,k],S,K[k],T[j],r,'p')
 
-        return C,P,IV
+        return P.squeeze(),IV.squeeze()

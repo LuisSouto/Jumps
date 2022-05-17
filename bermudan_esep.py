@@ -186,8 +186,7 @@ plt.legend(('COS method','Simulation'))
 plt.show()
 
 ## %% Price European put
-S0 = S0[1]
-Kv    = S0*np.arange(0.8,1.25,0.05)
+Kv    = S0[1]*np.arange(0.8,1.25,0.05)
 Tv    = np.array([0.1,0.25,0.5,0.75,1,2])
 nK    = Kv.size
 nT    = Tv.size
@@ -195,10 +194,10 @@ P     = np.zeros((nT,nK))
 Ppoi  = np.zeros((nT,nK))
 Ph    = np.zeros((nT,nK))
 
-ejd  = ajd.GBMJD(S0,r,s,esep)
-hjd  = ajd.GBMJD(S0,r,s,hawkes)
+ejd  = ajd.GBMJD(S0[1],r,s,esep)
+hjd  = ajd.GBMJD(S0[1],r,s,hawkes)
 poi  = Poisson(a,b,hb,Q0,cm,eJ,fu)
-pjd  = ajd.GBMJD(S0,r,s,poi)
+pjd  = ajd.GBMJD(S0[1],r,s,poi)
 for i in range(nT):
 
     for j in range(nK):
@@ -211,7 +210,7 @@ for i in range(nT):
         cm4 = ejd.cumulant4(Tv[i])
 
         # COS method calls y puts
-        P[i,j]  = COS.put(S0,Kv[j],Tv[i],r,cfe,[cm1,cm2,cm4])
+        P[i,j]  = COS.vanilla(S0[1],Kv[j],Tv[i],r,cfe,[cm1,cm2,cm4],-1)
 
         # Poisson jump-diffusion
         cfp  = lambda u: pjd.cf(u,0,Tv[i],1,Q0)
@@ -220,7 +219,7 @@ for i in range(nT):
         cm2  = pjd.var(Tv[i])
         cm4  = pjd.cumulant4(Tv[i])
 
-        Ppoi[i,j]  = COS.put(S0,Kv[j],Tv[i],r,cfp,[cm1,cm2,cm4])
+        Ppoi[i,j]  = COS.vanilla(S0[1],Kv[j],Tv[i],r,cfp,[cm1,cm2,cm4],-1)
 
         # Hawkes jump-diffusion 
         cfh = lambda u: hjd.cf(u,0,Tv[i],1,Q0)
@@ -231,7 +230,7 @@ for i in range(nT):
         cm4 = hjd.cumulant4(Tv[i])
 
         # COS method calls y puts
-        Ph[i,j]  = COS.put(S0,Kv[j],Tv[i],r,cfh,[cm1,cm2,cm4])
+        Ph[i,j]  = COS.vanilla(S0[1],Kv[j],Tv[i],r,cfh,[cm1,cm2,cm4],-1)
 
 ## %% Plot the results
 plt.figure()
@@ -257,10 +256,9 @@ plt.savefig('/home/luis_souto/Thesis/ESEP/Presentation Industry Week/figures/eur
 plt.show()
 
 ## %% Price Bermudan put
-
 T = 1
-K = S0
-M = np.arange(1,11)
+K = S0[1]
+M = np.arange(1,21)
 nM = M.size
 P2     = np.zeros((nM,))
 Ppoi2  = np.zeros((nM,))
@@ -276,7 +274,7 @@ for i in range(nM):
     cms = np.array([cm1,cm2,cm4])
 
     # COS method calls y puts
-    Qe,Pe = COS.bermudan_put_nolevy_v2(S0,K,T,r,cms,0,0,cfe,M[i],jump=True)
+    Qe,Pe = COS.bermudan_put_nolevy_v2(S0[1],K,T,r,cms,0,0,cfe,M[i],jump=True)
     P2[i]  = Pe[Q0]
 
     # Poisson jump-diffusion
@@ -287,7 +285,7 @@ for i in range(nM):
     cm4  = pjd.cumulant4(T)
     cms = np.array([cm1,cm2,cm4])
 
-    Qe,Pe = COS.bermudan_put_nolevy_v2(S0,K,T,r,cms,0,0,cfp,M[i],jump=True)
+    Qe,Pe = COS.bermudan_put_nolevy_v2(S0[1],K,T,r,cms,0,0,cfp,M[i],jump=True)
     Ppoi2[i] = Pe[Q0]
 
     # Hawkes jump-diffusion 
@@ -302,7 +300,7 @@ for i in range(nM):
     # COS method calls y puts
     ah  = 0
     bh  = 2**5
-    Qh,Pbh = COS.bermudan_put_nolevy_v2(S0,K,T,r,cms,ah,bh,cfh,M[i],jump=False)
+    Qh,Pbh = COS.bermudan_put_nolevy_v2(S0[1],K,T,r,cms,ah,bh,cfh,M[i],jump=False)
     Pbh = CubicSpline(Qh,Pbh,axis=0)
     Ph2[i]  = Pbh(Q0)
 

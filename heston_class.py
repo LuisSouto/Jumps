@@ -108,7 +108,6 @@ class Heston():
         eta  = self.eta
         nu   = self.nu
 
-        et  = np.exp(-lamb*t)
         q   = 2*lamb*nu/eta**2-1
         w   = u*(lamb*self.rho/eta-0.5)+1j*u**2/2*(1-self.rho**2)
         g   = np.sqrt(lamb**2-1j*2*w*eta**2)
@@ -118,8 +117,7 @@ class Heston():
 
         bfk1 = (np.exp((vs+vt)/(eta**2)*(-g*(1+eg)/(1-eg)))*sp.iv(q,arg))
 
-        return (np.exp(1j*u*(logS+self.r*t
-                             +self.rho/eta*(vt-vs-lamb*nu*t)))
+        return (np.exp(1j*u*(logS+self.r*t+self.rho/eta*(vt-vs-lamb*nu*t)))
                 *bfk1*g*(eg/et)**(0.5)*2/((eta**2)*(1-eg))
-                *np.exp(lamb/eta**2*(vs-vt))*(vt/(vs*et))**(q/2))
+                *np.exp(lamb/eta**2*(vs-vt))*(vt/(vs*et))**(q/2)*vt)
 
