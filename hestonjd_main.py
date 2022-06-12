@@ -21,7 +21,7 @@ from scipy.interpolate import CubicSpline
 
 import cos_method as COS
 from hawkes_class import Hawkes
-from esep_class import ESEP
+from qhawkes_class import QHawkes
 from heston_class import Heston
 from hestonjd_class import HestonJD
 from poisson_class import Poisson
@@ -73,16 +73,16 @@ fu = lambda u: np.exp(1j*u*mj-sj**2*u**2/2)
 cm = [mj,mj**2+sj**2,mj**3+3*mj*sj**2,mj**4+6*mj**2*sj**2+3*sj**4]
 
 ## %% Simulate the processes
-esep = ESEP(a,b,hb,Q0,cm,eJ,fu)
+qhawk = QHawkes(a,b,hb,Q0,cm,eJ,fu)
 hawk = Hawkes(a,b,hb,Q0,cm,eJ,fu)
 heston = Heston(S0[0],V0,r,lamb,nu,eta,rho)
-heston_e = HestonJD(heston,esep)
+heston_e = HestonJD(heston,qhawk)
 heston_h = HestonJD(heston,hawk)
 
 J     = np.random.standard_normal((N,))
-Tx,B  = esep.simul(N,T)
+Tx,B  = qhawk.simul(N,T)
 Th,Bh = hawk.simul(N,T)
-Ne,Qe = esep.compute_intensity(T,Tx,B)
+Ne,Qe = qhawk.compute_intensity(T,Tx,B)
 Nh,Ih = hawk.compute_intensity(T,Th,Bh)
 Nh = Nh.squeeze()
 S,V   = heston.simul(N,nT,T)
@@ -157,7 +157,7 @@ nrep = 1
 for k in range(nrep):
     for i in range(nT):
         for j in range(nK):
-            # ESEP prices
+            # Q-Hawkes prices
             cfe = lambda u: heston_e.cf(u,0,0,Tv[i],x0)
             cme = heston_e.cumulants_cos(Tv[i])
             cme[0] -= np.log(Kv[j])
@@ -244,7 +244,7 @@ plt.show()
 
 ## Price Bermudan
 cfV = lambda u,t,vt,vs: heston.cfcondv_dens(u,t,0,vt,vs)
-cfQ = lambda u,t,qt,qs: esep.cf_integral(u,qt,t,qs,vectorize=True)
+cfQ = lambda u,t,qt,qs: qhawk.cf_integral(u,qt,t,qs,vectorize=True)
 cfPoi = lambda u,t,vt,vs: cfV(u,t,vt,vs)*poi.cf_cj(u,0,t,Q0)
 cfH = lambda u,t,qt,qs: hawk.cf_cossum(u,t,qt,qs)
 

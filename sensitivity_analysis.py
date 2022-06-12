@@ -10,7 +10,7 @@ import py_vollib.black_scholes.implied_volatility as bs
 import cos_method as COS
 import gbmjd_class as ajd
 from poisson_class import Poisson
-from esep_class import ESEP
+from qhawkes_class import ESEP
 from hawkes_class import Hawkes
 
 #%% Initialize parameters

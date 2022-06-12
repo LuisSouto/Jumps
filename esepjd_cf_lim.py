@@ -1,13 +1,10 @@
 #%% Look for asymptotic behaviour of the characteristic function for the ESEP jump-diffusion.
 
-%reload_ext autoreload
-%autoreload 2
-
 import numpy as np
 import matplotlib.pyplot as plt
 import cProfile
 
-import esep_class as es
+import qhawkes_class as es
 import cos_method as COS
 import black_scholes as bs
 import hawkes_class as hawkes

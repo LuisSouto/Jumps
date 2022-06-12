@@ -3,7 +3,7 @@
 """
 Created on Tue Mar 29 16:32:34 2022
 
-Pricing of Bermudan options with the ESEP jump-diffusion
+Pricing of Bermudan options with the qhawk jump-diffusion
 
 @author: luis_souto
 """
@@ -21,7 +21,7 @@ import cos_method as COS
 import gbmjd_class as ajd
 from hawkes_class import Hawkes
 from poisson_class import Poisson
-from esep_class import ESEP
+from qhawkes_class import QHawkes
 from scipy.interpolate import CubicSpline
 
 np.set_printoptions(threshold=sys.maxsize)
@@ -55,9 +55,9 @@ cm = [m,m**2+s2**2,m**3+3*m*s2**2,m**4+6*m**2*s2**2+3*s2**4]
 
 ## %% Simulate the processes
 np.random.seed(5)
-# ESEP jump times
-esep = ESEP(a,b,hb,Q0,cm,eJ,fu)
-Tx,B = esep.simul(N,T)
+# Q-Hawkes jump times
+qhawk = QHawkes(a,b,hb,Q0,cm,eJ,fu)
+Tx,B = qhawk.simul(N,T)
 
 # Hawkes jump times 
 hawkes = Hawkes(a,b,hb,Q0,cm,eJ,fu)
@@ -74,11 +74,11 @@ J = np.random.standard_normal((N,))
 # Hawkes process
 t = np.linspace(0,T,100,endpoint=True)
 Nh,Ih = hawkes.compute_intensity(t,Th,Bh)
-Ne,Qe = esep.compute_intensity(t,Tx,B)
+Ne,Qe = qhawk.compute_intensity(t,Tx,B)
 Ie = hb + a*Qe
 
-# ESEP process
-Ne,Qe = esep.compute_intensity(T,Tx,B)
+# Q-Hawkes process
+Ne,Qe = qhawk.compute_intensity(T,Tx,B)
 Se = (X0[:,np.newaxis]+(r-eJ*h0-s**2/2)*T+s*np.sqrt(T)*W
       +Ne*m+s2*J*np.sqrt(Ne)-eJ*a*((Tx<T)*((T-Tx)*B)).sum(0))
 
@@ -114,7 +114,7 @@ plt.show()
 ## %% Compare the simulated density to the one from the COS method
 
 x   = np.arange(25)
-cfq = lambda u: esep.cf(u,T,Q0)
+cfq = lambda u: qhawk.cf(u,T,Q0)
 fx  = COS.density_dis(x, cfq)
 fxs = (Qe==x[:,np.newaxis]).mean(-1)
 
@@ -149,7 +149,7 @@ plt.show()
 
 ## %% Compare the bivariate density to the COS method
 
-ejd  = ajd.GBMJD(S0,r,s,esep)
+ejd  = ajd.GBMJD(S0,r,s,qhawk)
 cfx  = lambda u,v: ejd.cf(u,v,T,S0[0]/K,Q0)
 cme1 = ejd.mean(T).mean()-np.log(K)
 cme2 = ejd.var(T)
@@ -165,14 +165,14 @@ time2 = time.time()-time1
 print(time2)
 
 cf3 = lambda u: (np.exp(1j*u*(X0[0]+(r-0.5*s**2)*T)-u**2*T*s**2/2)
-                 *esep.cf_integral(u,x,T,Q0,vectorize=True))
+                 *qhawk.cf_integral(u,x,T,Q0,vectorize=True))
 time1 = time.time()
 fx3 = COS.density(xc,cf3,cme)
 time2 = time.time()-time1
 print(time2)
 
 # u = np.arange(2**6)/(b-a)*np.pi
-# pfun = lambda t: esep.cf_integral(u,id,t,Q0,vectorize=True)
+# pfun = lambda t: qhawk.cf_integral(u,id,t,Q0,vectorize=True)
 # cProfile.run('prof_func(pfun,T,5000)')
 
 ## Plot
@@ -195,14 +195,14 @@ P     = np.zeros((nT,nK))
 Ppoi  = np.zeros((nT,nK))
 Ph    = np.zeros((nT,nK))
 
-ejd  = ajd.GBMJD(S0[1],r,s,esep)
+ejd  = ajd.GBMJD(S0[1],r,s,qhawk)
 hjd  = ajd.GBMJD(S0[1],r,s,hawkes)
 poi  = Poisson(a,b,hb,Q0,cm,eJ,fu)
 pjd  = ajd.GBMJD(S0[1],r,s,poi)
 for i in range(nT):
 
     for j in range(nK):
-        # ESEP prices
+        # qhawk prices
         cfe = lambda u: ejd.cf(u,0,Tv[i],1,Q0)
 
         # Cumulants
@@ -265,7 +265,7 @@ P2     = np.zeros((nM,))
 Ppoi2  = np.zeros((nM,))
 Ph2    = np.zeros((nM,))
 for i in range(nM):
-    # ESEP prices
+    # qhawk prices
     cfe = lambda u,v,t,Q: ejd.cf(u,v,t,1,Q)
 
     # Cumulants

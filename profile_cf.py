@@ -20,7 +20,7 @@ import pstats
 import cos_method as COS
 import gbmjd_class as ajd
 from hawkes_class import Hawkes
-from esep_class import ESEP
+from qhawkes_class import ESEP
 from scipy.interpolate import CubicSpline
 
 np.set_printoptions(threshold=sys.maxsize)

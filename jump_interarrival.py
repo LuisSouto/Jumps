@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 import cos_method as COS
-from esep_class import ESEP
+from qhawkes_class import QHawkes
 from scipy.special import binom
 
 np.set_printoptions(threshold=sys.maxsize)
@@ -42,10 +42,10 @@ fu = lambda u: np.exp(1j*u*mj-sj**2*u**2/2)
 cm = [mj,mj**2+sj**2,mj**3+3*mj*sj**2,mj**4+6*mj**2*sj**2+3*sj**4]
 
 ## %% Simulate the processes
-esep  = ESEP(a,b,hb,Q0,cm,eJ,fu)
+qhawk  = QHawkes(a,b,hb,Q0,cm,eJ,fu)
 J     = np.random.standard_normal((N,))
-Tx,B  = esep.simul(N,T)
-Ne,Qe = esep.compute_intensity(T,Tx,B)
+Tx,B  = qhawk.simul(N,T)
+Ne,Qe = qhawk.compute_intensity(T,Tx,B)
 
 ## Get the kth arrival time
 kth = 0
@@ -70,11 +70,11 @@ Te12_norm   = Te12.size*dt/N
 
 kQ = np.arange(Q0+1)[:,np.newaxis]
 wQ = np.array([hb+a,b])[:,np.newaxis]/(hb+a+b)
-# fT = lambda t: (binom(Q0,kQ)*(a/b)**kQ*(b/(a+b))**Q0*esep.inter_time_dist(t,kQ+1)).sum(0)
-fT = lambda t: (wQ*esep.inter_time_dist(t,kQ+1)).sum(0)
+# fT = lambda t: (binom(Q0,kQ)*(a/b)**kQ*(b/(a+b))**Q0*qhawk.inter_time_dist(t,kQ+1)).sum(0)
+fT = lambda t: (wQ*qhawk.inter_time_dist(t,kQ+1)).sum(0)
 
 plt.figure()
-plt.plot(t,esep.inter_time_dist(t,Q0),'r*')
+plt.plot(t,qhawk.inter_time_dist(t,Q0),'r*')
 plt.plot(t,fT(t),'g^')
 plt.bar(t[:-1],Te12_counts*Te12_norm,width=dt)
 plt.legend((r'$T_1$ theory','$T_{1,2}$ theory','Empirical'),fontsize=12)
