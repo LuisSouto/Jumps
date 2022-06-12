@@ -45,7 +45,7 @@ plt.plot(kU,COS_errU[0]/kU*kU[0],'b-')
 plt.xlabel('N',fontsize=16)
 plt.ylabel('Error',fontsize=16)
 plt.legend((r'$\hat{p}_X(n)-p_X(n)$',r'$1/N$'),fontsize=12)
-plt.savefig('/home/luis_souto/Thesis/ESEP/Paper/figures/cos_error_uniform.png')
+plt.savefig('/home/luis_souto/Thesis/ESEP/Paper/figures/cos_error_uniform.eps',format='eps')
 plt.show()
 
 plt.figure()
@@ -55,7 +55,7 @@ plt.yscale("log")
 plt.xlabel('N',fontsize=16)
 plt.ylabel('Error',fontsize=16)
 plt.legend((r'$\hat{p}_X(n)-p_X(n)$',r'exp(-$N^2 / \lambda$)'),fontsize=12)
-plt.savefig('/home/luis_souto/Thesis/ESEP/Paper/figures/cos_error_poisson.png')
+plt.savefig('/home/luis_souto/Thesis/ESEP/Paper/figures/cos_error_poisson.eps',format='eps')
 plt.show()
 
 ##

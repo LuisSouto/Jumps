@@ -32,7 +32,7 @@ np.set_printoptions(threshold=sys.maxsize)
 st = 'E'
 T  = 1                     # Maturity
 nT = 300
-N  = 50000                # MC paths
+N  = 10000                # MC paths
 S0 = np.array([9,10,11])   # Asset's initial value
 K  = 10                    # Strike
 X0 = np.log(S0/K)          # Normalized log-stock
@@ -165,7 +165,7 @@ for k in range(nrep):
             # Implied volatility
             time1 = time.time()
             P[i,j],Delta_e[i,j] = COS.vanilla(S0[0],Kv[j],Tv[i],r,cfe,cme
-                                              ,-1,compute_delta=True)
+                                              ,alpha=-1,compute_delta=True)
             time_e += (time.time()-time1)
             IVe[i,j] = bs.implied_volatility(P[i,j],S0[0],Kv[j],Tv[i],r,'p')
 
@@ -177,7 +177,7 @@ for k in range(nrep):
             # Implied volatility
             time1 = time.time()
             Ppoi[i,j],Delta_p[i,j] = COS.vanilla(S0[0],Kv[j],Tv[i],r,cfp,cmp
-                                                 ,-1,compute_delta=True)
+                                                 ,alpha=-1,compute_delta=True)
             time_p += (time.time()-time1)
             IVp[i,j] = bs.implied_volatility(Ppoi[i,j],S0[0],Kv[j],Tv[i],r,'p')
 
@@ -191,7 +191,7 @@ for k in range(nrep):
             # Implied volatility
             time1 = time.time()
             Ph[i,j],Delta_h[i,j] = COS.vanilla(S0[0],Kv[j],Tv[i],r,cfh,cmh
-                                               ,-1,compute_delta=True)
+                                               ,alpha=-1,compute_delta=True)
             time_h += (time.time()-time1)
             IVh[i,j] = bs.implied_volatility(Ph[i,j],S0[0],Kv[j],Tv[i],r,'p')
 
@@ -205,6 +205,7 @@ plt.plot(Tv,IVp[:,idK],'g^')
 plt.xlabel('Maturity',fontsize=16)
 plt.ylabel('Implied volatility',fontsize=16)
 plt.legend(('Q-Hawkes','Hawkes','Poisson'),fontsize=12,loc='lower right')
+plt.title('Scenario B',fontsize=16)
 plt.savefig('/home/luis_souto/Thesis/ESEP/Paper/figures/vanilla_maturity'+st+'.eps',format='eps')
 plt.show()
 
@@ -215,6 +216,7 @@ plt.plot(Tv,Delta_p[:,idK],'g^')
 plt.xlabel('Maturity',fontsize=16)
 plt.ylabel(r'Delta $\Delta$',fontsize=16)
 plt.legend(('Q-Hawkes','Hawkes','Poisson'),fontsize=12,loc='lower right')
+plt.title('Scenario A',fontsize=16)
 plt.savefig('/home/luis_souto/Thesis/ESEP/Paper/figures/delta_maturity'+st+'.eps',format='eps')
 plt.show()
 
@@ -226,6 +228,7 @@ plt.plot(Kv,IVp[idT,:],'g^')
 plt.xlabel('Strike',fontsize=16)
 plt.ylabel('Implied volatility',fontsize=16)
 plt.legend(('Q-Hawkes','Hawkes','Poisson'),fontsize=12)
+plt.title('Scenario B',fontsize=16)
 plt.savefig('/home/luis_souto/Thesis/ESEP/Paper/figures/vanilla_strike'+st+'.eps',format='eps')
 plt.show()
 
@@ -283,7 +286,7 @@ for k in range(nrep):
         cme[0] -= np.log(Kv[idK])
         time1 = time.time()
         Vb,Qb,Pb = COS.bermudan_put_3D(S0[0],Kv[idK],Tv[idT],r,cme,av,bv,cfV,cfQ,M[i]
-                                       ,nQ=2**5)
+                                       ,N1=2**7,nV=2**5,nQ=2**5)
         time_e += (time.time()-time1)
         P2[i] = CubicSpline(Vb,Pb[:,Q0,:],axis=0)(V0)
         IVbe[i] = bs.implied_volatility(P2[i],S0[0],Kv[idK],Tv[idT],r,'p')
@@ -292,8 +295,8 @@ for k in range(nrep):
         cmp = heston_p.cumulants_cos(Tv[idT]/M[i])
         cmp[0] -= np.log(Kv[idK])
         time1 = time.time()
-        Vbp,Pbp = COS.bermudan_put_3D(S0[0],Kv[idK],Tv[idT],r,cme,av,bv,cfPoi,cfQ,M[i]
-                                      ,dim3=False)
+        Vbp,Pbp = COS.bermudan_put_3D(S0[0],Kv[idK],Tv[idT],r,cmp,av,bv,cfPoi,cfQ,M[i]
+                                      ,N1=2**7,nV=2**5,dim3=False)
         time_p += (time.time()-time1)
         Ppoi2[i] = CubicSpline(Vbp,Pbp,axis=0)(V0)
         IVbp[i] = bs.implied_volatility(Ppoi2[i],S0[0],Kv[idK],Tv[idT],r,'p')
@@ -302,8 +305,8 @@ for k in range(nrep):
         cmh = heston_h.cumulants_cos(Tv[idT]/M[i])
         cmh[0] -= np.log(Kv[idK])
         time1 = time.time()
-        Vbh,Qbh,Pbh = COS.bermudan_put_3D(S0[0],Kv[idK],Tv[idT],r,cme,av,bv,cfV,cfH,M[i]
-                                          ,nQ=2**5,jump=False)
+        Vbh,Qbh,Pbh = COS.bermudan_put_3D(S0[0],Kv[idK],Tv[idT],r,cmh,av,bv,cfV,cfH,M[i]
+                                          ,N1=2**7,nV=2**5,nQ=2**5,jump=False)
         time_h += (time.time()-time1)
         Pbh = CubicSpline(Qbh,Pbh,axis=1)
         Ph2[i] = CubicSpline(Vbh,Pbh(Q0))(V0)
@@ -317,8 +320,9 @@ plt.plot(M,IVbh,'bx')
 plt.plot(M,IVbp,'g^')
 plt.xlabel('Exercise dates',fontsize=16)
 plt.ylabel('Implied volatility',fontsize=16)
-# plt.ylim([1.03,1.45])
+plt.ylim([1.67,1.95])
 plt.legend(('Q-Hawkes','Hawkes','Poisson'),fontsize=12,loc='lower right')
+plt.title('Scenario B',fontsize=16)
 plt.savefig('/home/luis_souto/Thesis/ESEP/Paper/figures/bermudan'+st+'.eps',format='eps')
 plt.show()
 

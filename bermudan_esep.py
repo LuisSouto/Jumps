@@ -32,13 +32,13 @@ def prof_func(f,t,N=100):
         f(t)
 
 ## %% Initialize parameters
-a  = 0.5                   # Intensity jump size
+a  = 2.9                   # Intensity jump size
 b  = 3.                    # Memory kernel rate
-hb = 6                    # Intensity baseline
+hb = 1.1                    # Intensity baseline
 Q0 = 2                    # Initial memory
 h0 = hb + a*Q0             # Initial intensity
 T  = 1                     # Maturity
-N  = 50000                # MC paths
+N  = 20000                # MC paths
 S0 = np.array([9,10,11])   # Asset's initial value
 K  = 10                    # Strike
 X0 = np.log(S0/K)          # Normalized log-stock
@@ -83,19 +83,20 @@ Se = (X0[:,np.newaxis]+(r-eJ*h0-s**2/2)*T+s*np.sqrt(T)*W
       +Ne*m+s2*J*np.sqrt(Ne)-eJ*a*((Tx<T)*((T-Tx)*B)).sum(0))
 
 ## %% Plot intensities
-id = 1
+id = 22
 plt.figure()
-plt.plot(t,Ih[:,id])
-plt.plot(Th[:,id],hb*Bh[:,id],'ko')
+plt.plot(t,Ie[id,:],'r*-')
+plt.plot(t,Ih[:,id],'bx-')
+# plt.plot(Th[:,id],hb*Bh[:,id],'ko')
 plt.xlabel('Time',fontsize=16)
 plt.ylabel('Intensity',fontsize=16)
 plt.xlim([0,T])
-plt.ylim([0.99*hb,1.05*Ih[:,id].max()])
-plt.title(r'Set '+st,fontsize=20)
-plt.legend(('Intensity','Jumps'),fontsize=12)
-plt.savefig('/home/luis_souto/Thesis/ESEP/Presentation Industry Week/figures/hawk_intensity'+st+'.png')
+# plt.ylim([0.99*hb,1.05*Ih[:,id].max()])
+plt.title(r'Scenario '+st,fontsize=20)
+plt.legend(('Q-Hawkes','Hawkes'),fontsize=12)
+plt.savefig('/home/luis_souto/Thesis/ESEP/Presentation ICCF2022 Wuppertal/figures/intensities'+st+'.png')
 plt.show()
-
+##
 id = 6
 plt.figure()
 plt.plot(t,Ie[id,:])
@@ -127,23 +128,23 @@ print((x*fxs).sum(),(x*fx).sum())
 print((x*(x-1)*fxs).sum(),(x*(x-1)*fx).sum())
 
 ## %% Compare with the Hawkes
-xh = np.linspace(0.0,25,100)
+xh = np.linspace(0.0,25,40)
 cfh = lambda u: hawkes.cf_int(u,T,Q0)
 cmh1 = (Ih[-1,:].mean()-hb)/a
 cmh2 = Ih[-1,:].var()/a**2
 cmh4 = 0
 cmh = np.array([cmh1,cmh2,cmh4])
-fh  = COS.density(xh,cfh,cmh)
+fh  = COS.density(xh,cfh,cmh,N=2**8)
 
 plt.figure()
-plt.plot(x,fx)
-plt.plot(xh,fh)
+plt.plot(x,fx,'r*')
+# plt.plot(xh,fh,'bx')
 plt.hist((Ih[-1,:]-hb)/a,xh,density=True)
 plt.xlabel('Intensity',fontsize=16)
 plt.ylabel('Density',fontsize=16)
-plt.title(r'Set '+st,fontsize=20)
+plt.title(r'Scenario '+st,fontsize=20)
 plt.legend(('Queue-H','Hawkes'),fontsize=12)
-plt.savefig('/home/luis_souto/Thesis/ESEP/Presentation Industry Week/figures/density'+st+'.png')
+plt.savefig('/home/luis_souto/Thesis/ESEP/Presentation ICCF2022 Wuppertal/figures/density'+st+'.png')
 plt.show()
 
 ## %% Compare the bivariate density to the COS method

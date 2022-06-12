@@ -95,7 +95,7 @@ class HestonJD():
                     cm[0] -= np.log(K[k])
 
                     # COS method puts
-                    P[i,j,k]  = COS.vanilla(S,K[k],T[j],r,cfs,cm,-1)
+                    P[i,j,k]  = COS.vanilla(S,K[k],T[j],r,cfs,cm,alpha=-1)
                     IV[i,j,k] = bs.implied_volatility(P[i,j,k],S,K[k],T[j],r,'p')
 
         return P.squeeze(),IV.squeeze()

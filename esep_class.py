@@ -103,6 +103,17 @@ class ESEP(PointP):
             Qe[:,i] = self.Q0+(Ne[:,i]-(idx*(B<0)).sum(0))
         
         return Ne.squeeze(),Qe.squeeze()
+
+    def inter_time_dist(self,t,Q):
+        a = self.a
+        b = self.b
+        return 1-np.exp(-self.hb*t)*((a*np.exp(-(a+b)*t)+b)/(a+b))**Q
+
+    def inter_time_pdf(self,t,Q):
+        a = self.a
+        b = self.b
+        return ((a*np.exp(-(a+b)*t)+b)/(a+b))**(Q-1)*np.exp(-self.hb*t)\
+               *(self.hb*(a*np.exp(-(a+b)*t)+b)/(a+b)+Q*a*np.exp(-(a+b)*t))
     
     def mean_cj(self,t):
         a  = self.a
@@ -185,13 +196,13 @@ class ESEP(PointP):
         fu = np.sqrt((b+a*(1+iu))**2-4*a*b*eu)
         efu = np.exp(-fu*t)
         hu = (1+efu)*fu+(1-efu)*(b+a*(1+iu))
-        h2 = (1+efu)*fu-(1-efu)*(b+a*(1+iu))
-        p  = ((1+efu)*fu+(1-efu)*(b+a*(1+iu-2*eu)))/hu
+        h2 = ((1+efu)*fu-(1-efu)*(b+a*(1+iu)))
+        p  = (1-efu)*a*2*eu/hu
         g  = 2*b*(1-efu)
 
         # Check for obvious result
         if np.min(Q)<=0: return (np.exp(self.hb*t/(2*a)*(b-a-fu-a*iu))
-                                 *(2*fu/hu)**(self.hb/a)*binom(x+self.hb/a-1,x)*(1-p)**x)
+                                 *(2*fu/hu)**(self.hb/a)*binom(x+self.hb/a-1,x)*p**x)
 
         # Indices for all x. It basically returns all combinations from zero to
         # max(x), so the input could as well be max(x) and the function would
@@ -207,7 +218,7 @@ class ESEP(PointP):
     
             # Compute summation terms
             th = (np.exp(self.hb*t/(2*a)*(b-a-fu-a*iu))*(2*fu/hu)**(self.hb/a)
-                  *binom(xi+self.hb/a+Q-1,xi)*(1-p)**xi)
+                  *binom(xi+self.hb/a+Q-1,xi)*p**xi)
             th[xi[:,:,0]<0,:] = 0
             qh = hu**(-Q)*binom(Q,qi)*g**(Q-qi)*h2**qi
     
@@ -220,16 +231,15 @@ class ESEP(PointP):
     
             # Compute summation terms
             qh = hu**(-qi2)*binom(qi2,qi3)*g**(qi2-qi3)*h2**qi3
-            th = (np.exp(self.hb*t/(2*a)*(b-a-fu-a*iu))*(2*fu/hu)**(self.hb/a)
-                  *(1-p)**xi)
             bn = binom(xi+self.hb/a+qi-1,xi)
-            th[xi[:,:,0]<0,:] = 0
+            th = np.zeros((mQ+1,mx+1,u.size),dtype=complex)
+            th[xi[:,:,0]>=0,:] = p**xi[xi[:,:,0]>=0,:]
     
             res = np.zeros((mQ+1,mx+1,u.size),dtype=complex)
             res[0] = th[0]*binom(xi[0]+self.hb/a-1,xi[0])
             for i in qi:
-                res[i] = np.sum(th*bn[:,:,i-1:i]*qh[:,i-1:i,:],0)
+                res[i] = np.sum(th[:i+1]*bn[:i+1,:,i-1:i]*qh[:i+1,i-1:i,:],0)
                 
-            return res
+            return res*(2*fu/hu)**(self.hb/a)*np.exp(self.hb*t/(2*a)*(b-a-fu-a*iu))
 ##
 
