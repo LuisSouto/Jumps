@@ -3,7 +3,9 @@
 """
 Created on Thu Feb 10 22:44:38 2022
 
-@author: luis_souto
+@author: Luis Antonio Souto Arias
+
+@Software: PyCharm
 
 Class for the Hawkes process.
 """
@@ -14,16 +16,16 @@ import numpy as np
 from pp_class import PointP
 from quad_rules import gauss_legendre
 
+# System of ODEs for the intensity
 def ode_cf_int(t,y,u,a,b,hb):
-    # f  = y[0]
-    # dy = [np.exp(a*f+1j*u)-1-b*f,b*hb*f]
     n = int(y.size/2)
     f = y[:n]
     dy  = np.concatenate([(np.exp(f)*a-a-b*f)
                           ,hb*(np.exp(f)-1)])
     return dy
 
-def ode_cf_mar(t,y,u,a,b,hb,m,eJ):
+# System of ODEs for the compensated jump term Mt
+def ode_cf_mt(t,y,u,a,b,hb,m,eJ):
     n = int(y.size/2)
     f = y[:n]
     dy  = np.concatenate([(np.exp(f)*eJ(u)-1-b*f/a-1j*u*m)*a
@@ -94,10 +96,11 @@ class Hawkes(PointP):
         if np.isscalar(u): u = np.array([[u]])
         if np.isscalar(Q): Q = np.array([Q])
         nu = u.size
+        # If v is scalar, vectorize in u. Otherwise vectorize v.
         if np.isscalar(v):
             y0 = 1j*np.concatenate([v*np.ones((nu,)),np.zeros((nu,))])
-            sol = solve_ivp(ode_cf_mar,(0,t),y0,t_eval=[t]
-                            ,args=(u.squeeze(),self.a,self.b,self.hb,self.eJ,self.cfJ))
+            sol = solve_ivp(ode_cf_mt, (0, t), y0, t_eval=[t]
+                            , args=(u.squeeze(),self.a,self.b,self.hb,self.eJ,self.cfJ))
             A = sol.y[nu:,0]
             B = sol.y[:nu,0]
             A = A.reshape(u.shape)
@@ -108,8 +111,8 @@ class Hawkes(PointP):
             nv = v.size
             for i in range(u.size):
                 y0  = 1j*np.concatenate([v,np.zeros((nv,))])
-                sol = solve_ivp(ode_cf_mar,(0,t),y0,t_eval=[t]
-                                ,args=(u[i],self.a,self.b,self.hb,self.eJ,self.cfJ))
+                sol = solve_ivp(ode_cf_mt, (0, t), y0, t_eval=[t]
+                                , args=(u[i],self.a,self.b,self.hb,self.eJ,self.cfJ))
                 A[i] = sol.y[nv:,0]
                 B[i] = sol.y[:nv,0]
 
@@ -162,7 +165,7 @@ class Hawkes(PointP):
         # Adapted to the dimensions of cf_cj
         cfh = (self.cf_cj(u[:,np.newaxis],v,t,qs)*np.exp(-1j*v*a)
                +self.cf_cj(u[:,np.newaxis],-v,t,qs)*np.exp(1j*v*a))
-        cfh = cfh.transpose(1,2,0)                # Transpose to do matrix product
+        cfh = cfh.transpose(1,2,0)   # Transpose to do matrix product
         costerm = np.cos(v*(qt-a))*wt[:,np.newaxis]
         costerm[:,0] *= 0.5
         for i in range(u.size):

@@ -15,10 +15,7 @@ class Heston():
         self.rho  = rho
 
     def simul(self,N,n,T):
-        
-        # Simulate the diffusion
         dt = T/(n-1)
-
         X = np.zeros((N,n))
         V = np.zeros((N,n))
         X[:,0] = self.X0
@@ -54,13 +51,11 @@ class Heston():
         f2 = (1j*u*self.r*t
               +lamb*nu/eta**2*((b-d)*t-2*np.log((1-g2*np.exp(-d*t))/(1-g2))))
         
-        return np.exp(1j*u*X[0] + f1*X[1] + f2)
+        return np.exp(1j*u*X[0]+f1*X[1]+f2)
 
     def mean(self,t):
-        return (np.log(self.S0)
-                +self.r*t
-                +(1-np.exp(-self.lamb*t))*(self.nu-self.V0)/(2*self.lamb)
-                -self.nu*t/2)
+        return (np.log(self.S0)+self.r*t-self.nu*t/2
+                +(1-np.exp(-self.lamb*t))*(self.nu-self.V0)/(2*self.lamb))
 
     def var(self,t):
         lamb = self.lamb
@@ -98,8 +93,7 @@ class Heston():
         c    = 2*lamb/((1-et)*eta**2)
 
         return (((-c*vt+q+1)*sp.iv(q,2*c*np.sqrt(vt*vs*et))
-                 +c*np.sqrt(vt*vs*et)
-                  *(sp.iv(q+1,2*c*np.sqrt(vt*vs*et))))
+                +c*np.sqrt(vt*vs*et)*(sp.iv(q+1,2*c*np.sqrt(vt*vs*et))))
                 *c*np.exp(-c*(vt+vs*et))*vt*(vt/(vs*et))**(q/2))
 
     # Equation (30) of Fang (2011)
@@ -120,4 +114,28 @@ class Heston():
         return (np.exp(1j*u*(logS+self.r*t+self.rho/eta*(vt-vs-lamb*nu*t)))
                 *bfk1*g*(eg/et)**(0.5)*2/((eta**2)*(1-eg))
                 *np.exp(lamb/eta**2*(vs-vt))*(vt/(vs*et))**(q/2)*vt)
+    
+    def logvar_bounds(self,t,tol_l=1e-8,tol_u=1e-8):
+        V0   = self.V0
+        lamb = self.lamb
+        nu   = self.nu
+        eta  = self.eta
+
+        mV = np.log(V0*np.exp(-lamb*t)+nu*(1-np.exp(-lamb*t)))
+        q = 2*lamb*nu/eta**2-1
+        c = 2*lamb/((1-np.exp(-lamb*t))*eta**2)
+        av = mV-5/(1+q)
+        bv = mV+1/(1+q)
+
+        # Density of log-variance and its first derivative
+        fv   = lambda v: self.dens_logvar(t,np.exp(v),V0)
+        fv_v = lambda v: self.dens_logvar_dv(t,np.exp(v),V0)
+
+        while np.abs(fv(av))>tol_l:
+            av -= fv(av)/fv_v(av)
+
+        while np.abs(fv(bv))>tol_u:
+            bv -= fv(bv)/fv_v(bv)
+
+        return av,bv
 

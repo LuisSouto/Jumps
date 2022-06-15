@@ -5,6 +5,8 @@ Created on Thu Feb 10 2022
 
 @author: Luis Antonio Souto Arias
 
+@Software: PyCharm
+
 Basis for the point process class. It contains the basic methods that
 the three classes Poisson, Hawkes and QHawkes should have in common.
 
@@ -12,9 +14,11 @@ The notation and meaning of the parameters is extracted from Souto, Cirillo and
 Oosterlee (2022): A new self-exciting jump-diffusion model for option pricing.
 https://doi.org/10.48550/arXiv.2205.13321
 """
+import numpy as np
 
 class PointP():
-    def __init__(self,a,b,hb,Q0,mJ,eJ,cfJ):
+    def __init__(self,a,b,hb,Q0,mJ=np.ones((4,)),eJ=np.exp(1)-1,
+                 cfJ=lambda u: np.exp(1j*u)):
         self.set_param(a,b,hb,Q0,mJ,eJ,cfJ)
 
     def set_param(self,a=None,b=None,hb=None,Q0=None,mJ=None,eJ=None,cfJ=None):

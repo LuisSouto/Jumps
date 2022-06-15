@@ -5,6 +5,8 @@ Created on Thu Feb 10 01:07:42 2022
 
 @author: Luis Antonio Souto Arias
 
+@Software: PyCharm
+
 Class related to the Q-Hawkes process. It contains attributes related to the
 parameters of the model, as well as methods for computing the characteristic
 function and performing simulations via the thinning algorithm.
@@ -301,10 +303,9 @@ class QHawkes(PointP):
         b  = self.b
         m  = self.mJ[0]
         eJ = self.eJ
+        et = np.exp((a-b)*t)
 
-        return (-a/(a-b)*(-1+np.exp((a-b)*t))*(eJ-m)*self.Q0-1/2*eJ*self.hb*t
-               +1/2/(a-b)**2*self.hb*(a**2*eJ*t-b**2*(eJ-2*m)*t-2*a*
-               np.exp((a-b)*t)*(eJ-m)+(-eJ+m+b*m*t)))
+        return (self.eJ-self.mJ[0])/(b-a)*(self.hb*b*((et-1)/(a-b)-t)+self.h0*(et-1))
 
     def var_cj(self,t):
         a  = self.a
@@ -327,6 +328,10 @@ class QHawkes(PointP):
 
         return -(f1+f2)
 
+
+# Any code below this point can be safely ignored. It contains the implementations
+# of the third and fourth cumulants, which are extremely cumbersome and long
+# formulas.
     def cumulant3_cj(self,t):
         a  = self.a
         b  = self.b

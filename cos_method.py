@@ -3,6 +3,8 @@
 """
 @author: Luis Antonio Souto Arias
 
+@Software: PyCharm
+
 This module contains functions related to the COS method of Fang and
 Oosterlee (2008): A novel pricing method for European options based
 on Fourier-cosine based series expansions. SIAM Journal on Scientific Computing.
@@ -269,7 +271,7 @@ def bermudan_put_3D(S,K,T,r,cm,aV,bV,cfV,cfQ,M,N1=2**6,nV=2**6,
     # Parameters
     x  = np.log(S/K)
     dt = T/M
-    L  = 8
+    L  = 6.5
     a1,b1 = trunc_interval(cm,L)
 
     vV,wV = quad.gauss_legendre(aV,bV,nV)
