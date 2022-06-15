@@ -25,7 +25,7 @@ class HestonJD():
         self.jp  = jp   # Jump class
 
     def cf(self,u,v,w,t,X):
-        """ Joint characteristic function (CF) of all processes
+        """ Joint characteristic function (CF) of all processes.
 
         Input
         -----
@@ -64,45 +64,8 @@ class HestonJD():
         The fourth cumulant is assumed to be zero.
         """
         return np.array([self.mean(t).mean(),self.var(t),0])
-    
-    def simul(self,N,n,T):
-        dt = T/(n-1)        
-        
-        # Simulate the jumps
-        Tx,B  = self.jp.simul(N,T)
-        Q  = np.zeros((N,n))
-        Nj = np.zeros((N,n))
-        Nj[:,0] = 0
-        Q[:,0]  = self.jp.Q0
-        for i in range(1,n):
-            Nj[:,i],Q[:,i] = self.jp.compute_intensity(dt*i,Tx,B)
-        I = self.jp.hb + self.jp.a*Q            
-        
-        # Simulate the diffusion
-        X = np.zeros((N,n))
-        V = np.zeros((N,n))
-        X[:,0] = self.dp.X0
-        V[:,0] = self.dp.V0
 
-        lamb = self.dp.lamb
-        nu   = self.dp.nu
-        eta  = self.dp.eta
-        rho  = self.dp.rho
-        r    = self.dp.r
-        s    = np.sqrt(self.jp.mJ[1]-self.jp.mJ[0]**2)
-
-        dWS = np.random.normal(0,np.sqrt(dt),(N,n-1))
-        dWV = rho*dWS+np.sqrt(1-rho**2)*np.random.normal(0,np.sqrt(dt),(N,n-1))
-        J   = np.random.normal(self.jp.mJ[0],s,(N,n-1))
-        for i in range(1,n):
-            Vp = np.maximum(V[:,i-1],0)
-            V[:,i] = V[:,i-1] + lamb*(nu-Vp)*dt + np.sqrt(Vp)*eta*dWV[:,i-1]
-            X[:,i] = (X[:,i-1] + (r-0.5*Vp)*dt + np.sqrt(Vp)*dWS[:,i-1] 
-                      +J[:,i-1]*(Nj[:,i]-Nj[:,i-1])-self.jp.eJ*I[:,i-1]*dt)
-            
-        return X,V,Q
-
-    def sens_an(self,S,T,K,v,param=['a']):
+    def sens_an(self,S,T,K,v,param='a'):
         """ Sensitivity analysis of the implied volatility curves
          from European puts with respect to the Q-Hawkes parameters.
 
@@ -132,7 +95,7 @@ class HestonJD():
         if np.isscalar(v[0]): v = np.array([v]).T
 
         old_vars  = [vars(self.jp)[key] for key in param]
-        old_param = dict(zip(param,old_vars))
+        old_param = dict(zip(param,old_vars))   # Save old configuration
 
 
         r  = self.dp.r
