@@ -1,4 +1,21 @@
-# Definition of the Heston class
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Feb 10 01:07:42 2022
+
+@author: Luis Antonio Souto Arias
+
+@Software: PyCharm
+
+Class for the Heston model. The meaning of the parameters is the following:
+   - S0:   Initial asset value
+   - V0:   Initial variance
+   - r:    Risk-free interest rate
+   - lamb: Speed of mean reversion
+   - nu:   Long-term mean
+   - eta:  Vol-of-vol
+   - rho:  Asset-variance correlation
+"""
 
 import numpy as np
 import scipy.special as sp
@@ -120,7 +137,6 @@ class Heston():
         lamb = self.lamb
         nu   = self.nu
         eta  = self.eta
-
         mV = np.log(V0*np.exp(-lamb*t)+nu*(1-np.exp(-lamb*t)))
         q = 2*lamb*nu/eta**2-1
         c = 2*lamb/((1-np.exp(-lamb*t))*eta**2)
@@ -139,3 +155,20 @@ class Heston():
 
         return av,bv
 
+    def cumulants_cos(self,t):
+        """ Returns the cumulants for the rule of thumb in the COS method.
+        The fourth cumulant is assumed to be zero.
+        """
+        return np.array([self.mean(t).mean(),self.var(t),0])
+
+    def var_mean(self,t):
+        lamb = self.lamb
+        et   = np.exp(-lamb*t)
+        return self.V0*et+self.nu*(1-et)
+
+
+    def var_var(self,t):
+        lamb = self.lamb
+        eta  = self.eta
+        et   = np.exp(-lamb*t)
+        return eta**2/lamb*(1-et)*(self.V0*et+0.5*self.nu*(1-et))

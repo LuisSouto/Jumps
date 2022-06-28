@@ -26,6 +26,7 @@ The module contains the following functions:
 """
 
 from scipy.fftpack import fft,ifft
+from scipy.special import erf
 
 import numpy as np
 import quad_rules as quad
@@ -533,7 +534,7 @@ def vanilla_coeff(a, b, k, alpha=-1):
         esgn = np.empty_like(k,int)
         esgn[::2]  = 1
         esgn[1::2] = -1
-        Vk = esgn/(1+k**2)
+        Vk = np.exp(b)*esgn/(1+k**2)
     elif alpha==-1:
         Vk = np.exp(a)/(1+k**2)
 
