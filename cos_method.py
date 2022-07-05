@@ -135,7 +135,7 @@ def density_2D_dis(x1,x2,cf,cm,N1=2**6,N2=2**6):
     fx *= 2/((b-a)*N2)
     return fx
 
-def vanilla(S,K,T,r,cf,cm,N=2**6,alpha=-1,compute_delta=False):
+def vanilla(S,K,T,r,cf,cm,N=2**6,alpha=-1):
     """ European call and put valuation
 
     Input
@@ -156,15 +156,13 @@ def vanilla(S,K,T,r,cf,cm,N=2**6,alpha=-1,compute_delta=False):
        Number of COS terms.
     alpha: int, optional, default=-1
        Indicator for European calls (alpha=1) or puts (alpha=-1).
-    compute_delta: bool, optional, default=False
-       If true, the function also returns the option's Delta.
 
     Output
     ------
     P: ndarray_like(S)
        Price of the option.
-    P_S: ndarray_like(S)
-       Delta of the option. Only if compute_delta=True.
+    P_delta: ndarray_like(S)
+       Delta of the option.
     """
 
     L   = 6
@@ -176,12 +174,9 @@ def vanilla(S,K,T,r,cf,cm,N=2**6,alpha=-1,compute_delta=False):
     char_fun[0,:] /= 2
     cos_term = vanilla_coeff(a,b,k,alpha)
 
-    P = K*2/(b-a)*np.exp(-r*T)*np.dot(cos_term,np.real(char_fun))
-    if compute_delta:
-        P_S = -K*2/(b-a)*np.exp(-r*T)*np.dot(cos_term*k,np.imag(char_fun))
-        return P,P_S
-    else:
-        return P
+    P       = K*2/(b-a)*np.exp(-r*T)*np.dot(cos_term,np.real(char_fun))
+    P_delta = -K*2/(b-a)*np.exp(-r*T)*np.dot(cos_term*k,np.imag(char_fun))
+    return P,P_delta
 
 
 # Bermudan put valuation for Levy processes. Adaption of Marion's Matlab code
@@ -223,8 +218,8 @@ def bermudan_put(S,K,T,r,cm,cfS,M,N=2**7):
     # Option value
     return np.exp(-r*dt)*2/(b-a)*K*np.real(ccom)
 
-def bermudan_put_3D(S,K,T,r,cm,aV,bV,cfV,cfQ,M,N1=2**6,nV=2**6,
-                    nQ=2**6,dim3=True,jump=True):
+def bermudan_put_3D(S,K,T,r,cm,M,cfV=None,cfQ=None,N1=2**6,n1=2**6,
+                    n2=2**6):
     """ Bermudan put valuation using the COS method. It accepts a two-dimensional
     model like Heston (dim3=False) or a three-dimensional jump-diffusion with
     a two-dimensional diffusion (dim3=True) where the diffusion and jump contributions
@@ -242,10 +237,6 @@ def bermudan_put_3D(S,K,T,r,cm,aV,bV,cfV,cfQ,M,N1=2**6,nV=2**6,
       Risk-free interest rate.
     cm: ndarray(dtype=float,shape=(3,))
        First, second and fourth cumulants of log(S/K).
-    aV: float
-       Lower bound of the second diffusion process (e.g., Heston variance).
-    bV: float
-       Upper bound of the second diffusion process (e.g., Heston variance).
     cfV: callable
        Characteristic function of the two-dimensional model.
     cfQ: callable
@@ -254,14 +245,10 @@ def bermudan_put_3D(S,K,T,r,cm,aV,bV,cfV,cfQ,M,N1=2**6,nV=2**6,
        Number of exercise dates of the option.
     N1: int
        Number of COS terms in the asset dimension.
-    nV: int
+    n1: int
        Number of quadrature nodes for the second process (e.g., Heston variance).
-    nQ: int
+    n2: int
        Number of quadrature nodes for the third process (e.g., Q-Hawkes).
-    dim3: bool
-       If true, there are three stochastic factors, otherwise only two.
-    jump: bool
-       If true, the third process is discrete-valued, otherwise it is continuous.
 
     Output
     ------
@@ -274,58 +261,50 @@ def bermudan_put_3D(S,K,T,r,cm,aV,bV,cfV,cfQ,M,N1=2**6,nV=2**6,
     dt = T/M
     L  = 6.5
     a1,b1 = trunc_interval(cm,L)
-
-    vV,wV = quad.gauss_legendre(aV,bV,nV)
-    vV = np.exp(vV)
     k1 = (np.arange(N1)*np.pi/(b1-a1))[:,np.newaxis]
-    if dim3:
-        k1 = k1[:,np.newaxis]
+
+    cfvNone = cfV is None
+    cfQNone = cfQ is None
     
     # Fourier cosine coefficients payoff function
     Vk = vanilla_coeff(a1,b1,k1,-1)
     Vk[0] *= 0.5
-    if dim3:
-        if jump:
-            vQ = np.arange(nQ)
-        if not jump:
-            vQ,wQ = quad.gauss_legendre(0,nQ-1,nQ)
-
-        Vk = np.tile(Vk,(1,nV,nQ))
-        Bk = np.zeros_like(Vk, dtype=complex)
-        # Integrated characteristic function
-        cf1 = cfV(k1,dt,vV,vV[:,np.newaxis])*wV
-        cf2 = cfQ(k1.squeeze(),dt,nQ-1,nQ-1)
-        cf2 = cf2.transpose(2,1,0)
+    if not cfvNone:
+        cf1,v1 = cfV(k1,dt,n1)
+        if not cfQNone:
+            k1 = k1[:,np.newaxis]
+            # Integrated characteristic function
+            cf2,v2 = cfQ(k1,dt,n2)
+            Vk = np.tile(Vk,(1,n1,n2))
+        else:
+            v2 = None
+            Vk = np.tile(Vk,(1,n1))
     else:
-        Vk = np.tile(Vk,(1,nV))
-        cf1 = cfV(k1,dt,vV,vV[:,np.newaxis,np.newaxis])*wV
+        v1,v2 = None,None
 
     # xs is the early-exercise point where c = g,
     xs = np.zeros_like(Vk[0])  # initial value
-
+    Bk = np.zeros_like(Vk,dtype=complex)
     for m in range(M-1,0,-1):
         # Summations in V and Q for the continuation value
-        if dim3:
+        if (not cfvNone) and (not cfQNone):
             for i in range(N1):
                 Bk[i]  = np.dot(cf1[i],np.dot(Vk[i],cf2[i]))
-        else:
-            Bk = (Vk*cf1).sum(-1).T  # Should be size N x J
+        elif not cfvNone:
+            Bk = (Vk*cf1).sum(-1).T
         xs = newton_bermudan(a1,b1,k1,xs,Bk,K,r,dt)
         Vk = bermudan_coeff(a1,b1,k1,N1,xs,Bk,dt,r)
 
     # Fourier cosine coefficients density function
-    if dim3:
+    if (not cfvNone) and (not cfQNone):
         for i in range(N1):
             Bk[i] = np.dot(cf1[i],np.dot(Vk[i],cf2[i]))
         ccom = np.dot(Bk.transpose((1,2,0)),np.exp(1j*k1.squeeze(axis=-1)*(x-a1)))
-
-        # Option value
-        return vV,vQ,np.exp(-r*dt)*2/(b1-a1)*K*np.real(ccom)
-    else:
+    elif not cfvNone:
         Bk   = (Vk*cf1).sum(2)[:,:,np.newaxis]
         ccom = (Bk*np.exp(1j*k1*(x-a1))).sum(1)
 
-        return vV,np.exp(-r*dt)*2/(b1-a1)*K*np.real(ccom)
+    return np.exp(-r*dt)*2/(b1-a1)*K*np.real(ccom),v1,v2
 
 def american_put(S,K,T,r,cm,cfS):
     # American put valuation using the COS method

@@ -18,8 +18,9 @@ import numpy as np
 
 import cos_method as COS
 import py_vollib.black_scholes.implied_volatility as bs
+from pricing_functions import price_vanilla
 
-class HestonJD():
+class JumpDiffusion():
     def __init__(self,dp,jp):
         self.dp  = dp   # Diffusion class
         self.jp  = jp   # Jump class
@@ -49,6 +50,9 @@ class HestonJD():
            inputs.
         """
         return self.dp.cf(u,v,t,X[:-1])*self.jp.cf_cj(u,w,t,X[-1])
+
+    def cf_asset(self,u,t,X):
+        return self.dp.cf(u,0,t,X[:-1])*self.jp.cf_cj(u,0,t,X[-1])
 
     def mean(self,t):
         return self.dp.mean(t)+self.jp.mean_cj(t)
@@ -97,8 +101,6 @@ class HestonJD():
         old_vars  = [vars(self.jp)[key] for key in param]
         old_param = dict(zip(param,old_vars))   # Save old configuration
 
-
-        r  = self.dp.r
         n  = v.shape[0]
         nT = T.size
         nK = K.size
@@ -107,18 +109,11 @@ class HestonJD():
         for i in range(n):
             param_dict = dict(zip(param,v[i]))
             self.jp.set_param(**param_dict)
-            x0 = np.array([0,self.dp.V0,self.jp.Q0])
-            for j in range(nT):
-                # Characteristic function
-                cfs = lambda u: self.cf(u,0,0,T[j],x0)
-                for k in range(nK):
-                    # Cumulants
-                    cm = self.cumulants_cos(T[j])
-                    cm[0] -= np.log(K[k])
-
-                    # COS method puts
-                    P[i,j,k]  = COS.vanilla(S,K[k],T[j],r,cfs,cm,alpha=-1)
-                    IV[i,j,k] = bs.implied_volatility(P[i,j,k],S,K[k],T[j],r,'p')
+            try:
+                x0 = np.array([0,self.dp.V0,self.jp.Q0])
+            except:
+                x0 = np.array([0,self.jp.Q0])
+            P[i],IV[i] = price_vanilla(S,T,K,self.dp.r,x0)
 
         self.jp.set_param(**old_param)
         return P.squeeze(),IV.squeeze()
