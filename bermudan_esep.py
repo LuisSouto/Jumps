@@ -18,7 +18,7 @@ import cProfile
 
 
 import cos_method as COS
-import gbmjd_class as ajd
+import gbm_class as ajd
 from hawkes_class import Hawkes
 from poisson_class import Poisson
 from qhawkes_class import QHawkes

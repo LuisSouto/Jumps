@@ -26,8 +26,9 @@ import cos_method as COS
 from hawkes_class import Hawkes
 from qhawkes_class import QHawkes
 from heston_class import Heston
-from hestonjd_class import HestonJD
+from jumpdiff_class import JumpDiffusion
 from poisson_class import Poisson
+from pricing_functions import price_vanilla
 
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -75,9 +76,9 @@ qhawk    = QHawkes(a,b,hb,Q0,cm,eJ,fu)
 hawk     = Hawkes(a,b,hb,Q0,cm,eJ,fu)
 poi      = Poisson(a,b,hb,Q0,cm,eJ,fu)
 heston   = Heston(S0[0],V0,r,lamb,nu,eta,rho)
-heston_e = HestonJD(heston,qhawk)
-heston_h = HestonJD(heston,hawk)
-heston_p = HestonJD(heston,poi)
+heston_e = JumpDiffusion(heston,qhawk)
+heston_h = JumpDiffusion(heston,hawk)
+heston_p = JumpDiffusion(heston,poi)
 
 # Simulate the processes via Monte Carlo. This was done in order to validate
 # the results obtained with the COS method. Now it can be safely removed.
@@ -134,61 +135,16 @@ Kv  = S0[0]*np.linspace(0.8,1.2,21,endpoint=True)  # Strike grid
 Tv  = np.linspace(0.1,2,20,endpoint=True)          # Maturity grid
 nK  = Kv.size
 nT  = Tv.size
-Pq  = np.zeros((nT,nK))
-Pp  = np.zeros_like(Pq)
-Ph  = np.zeros_like(Pq)
-IVe = np.zeros_like(Pq)
-IVh = np.zeros_like(Pq)
-IVp = np.zeros_like(Pq)
-Delta_e = np.zeros_like(Pq)
-Delta_h = np.zeros_like(Pq)
-Delta_p = np.zeros_like(Pq)
 
-time_e = 0
-time_h = 0
-time_p = 0
-nrep   = 1    # Number of repetitions for runtime comparison purposes
-for k in range(nrep):
-    for i in range(nT):
-        for j in range(nK):
-            # Heston-Q-Hawkes
-            cfe = lambda u: heston_e.cf(u,0,0,Tv[i],x0)
-            cme = heston_e.cumulants_cos(Tv[i])
-            cme[0] -= np.log(Kv[j])
+x0 = np.array([0,V0,Q0])
+Pq,IVq,Delta_q = price_vanilla(heston_e,S0[0],Tv,Kv,r,x0,alpha=-1)
+Ph,IVh,Delta_h = price_vanilla(heston_h,S0[0],Tv,Kv,r,x0,alpha=-1)
+Pp,IVp,Delta_p = price_vanilla(heston_p,S0[0],Tv,Kv,r,x0,alpha=-1)
 
-            time1 = time.time()
-            Pq[i,j],Delta_e[i,j] = COS.vanilla(S0[0],Kv[j],Tv[i],r,cfe,cme,
-                                               alpha=-1,compute_delta=True)
-            time_e += (time.time()-time1)
-            IVe[i,j] = bs.implied_volatility(Pq[i,j],S0[0],Kv[j],Tv[i],r,'p')
-
-            # Bates model
-            cfp  = lambda u: heston_p.cf(u,0,0,Tv[i],x0)
-            cmp = heston_p.cumulants_cos(Tv[i])
-            cmp[0] -= np.log(Kv[j])
-
-            time1 = time.time()
-            Pp[i,j],Delta_p[i,j] = COS.vanilla(S0[0],Kv[j],Tv[i],r,cfp,cmp,
-                                               alpha=-1,compute_delta=True)
-            time_p += (time.time()-time1)
-            IVp[i,j] = bs.implied_volatility(Pp[i,j],S0[0],Kv[j],Tv[i],r,'p')
-
-            # Heston-Hawkes
-            cfh = lambda u: heston_h.cf(u,0,0,Tv[i],x0)
-            cmh = heston_h.cumulants_cos(Tv[i])
-            cmh[0] -= np.log(Kv[j])
-
-            time1 = time.time()
-            Ph[i,j],Delta_h[i,j] = COS.vanilla(S0[0],Kv[j],Tv[i],r,cfh,cmh,
-                                               alpha=-1,compute_delta=True)
-            time_h += (time.time()-time1)
-            IVh[i,j] = bs.implied_volatility(Ph[i,j],S0[0],Kv[j],Tv[i],r,'p')
-
-print(time_e/nrep,time_h/nrep,time_p/nrep)
 ## Plot the results
 idK = 10
 plt.figure()
-plt.plot(Tv,IVe[:,idK],'r*')
+plt.plot(Tv,IVq[:,idK],'r*')
 plt.plot(Tv,IVh[:,idK],'bx')
 plt.plot(Tv,IVp[:,idK],'g^')
 plt.xlabel('Maturity',fontsize=16)
@@ -197,7 +153,7 @@ plt.legend(('Q-Hawkes','Hawkes','Poisson'),fontsize=12,loc='lower right')
 plt.show()
 
 plt.figure()
-plt.plot(Tv,Delta_e[:,idK],'r*')
+plt.plot(Tv,Delta_q[:,idK],'r*')
 plt.plot(Tv,Delta_h[:,idK],'bx')
 plt.plot(Tv,Delta_p[:,idK],'g^')
 plt.xlabel('Maturity',fontsize=16)
@@ -207,7 +163,7 @@ plt.show()
 
 idT = 9
 plt.figure()
-plt.plot(Kv,IVe[idT,:],'r*')
+plt.plot(Kv,IVq[idT,:],'r*')
 plt.plot(Kv,IVh[idT,:],'bx')
 plt.plot(Kv,IVp[idT,:],'g^')
 plt.xlabel('Strike',fontsize=16)
@@ -216,7 +172,7 @@ plt.legend(('Q-Hawkes','Hawkes','Poisson'),fontsize=12)
 plt.show()
 
 plt.figure()
-plt.plot(Kv,Delta_e[idT,:],'r*')
+plt.plot(Kv,Delta_q[idT,:],'r*')
 plt.plot(Kv,Delta_h[idT,:],'bx')
 plt.plot(Kv,Delta_p[idT,:],'g^')
 plt.xlabel('Strike',fontsize=16)
@@ -230,7 +186,7 @@ cfPoi = lambda u,t,vt,vs: cfV(u,t,vt,vs)*poi.cf_cj(u,0,t,Q0)
 cfQ   = lambda u,t,qt,qs: qhawk.cf_integral(u,qt,t,qs,vectorize=True)
 cfH   = lambda u,t,qt,qs: hawk.cf_cossum(u,t,qt,qs)
 
-av,bv = heston.logvar_bounds(Tv[idT])
+av,bv = heston.logvar_bounds(Tv[idT]) # Boundaries for the variance
 
 M  = np.arange(1,11) # Exercise dates
 nM = M.size
@@ -305,7 +261,6 @@ plt.plot(av,IVah,'bx')
 plt.xlabel(r'Clustering rate $\alpha$',fontsize=16)
 plt.ylabel('Implied volatility',fontsize=16)
 plt.legend(('Q-Hawkes','Hawkes','Poisson'),fontsize=12,loc='lower right')
-plt.savefig('/home/luis_souto/Thesis/ESEP/Paper/figures/sensitivity_a'+st+'.eps',format='eps')
 plt.show()
 
 ## Sensitivity analysis beta
@@ -322,7 +277,6 @@ plt.plot(bv,IVbh,'bx')
 plt.xlabel(r'Expiration rate $\beta$',fontsize=16)
 plt.ylabel('Implied volatility',fontsize=16)
 plt.legend(('Q-Hawkes','Hawkes','Poisson'),fontsize=12)
-plt.savefig('/home/luis_souto/Thesis/ESEP/Paper/figures/sensitivity_b'+st+'.eps',format='eps')
 plt.show()
 
 ## Sensitivity analysis hb
@@ -339,7 +293,6 @@ plt.plot(hbv,IVhbh,'bx')
 plt.xlabel(r'Baseline intensity $\lambda^*$',fontsize=16)
 plt.ylabel('Implied volatility',fontsize=16)
 plt.legend(('Q-Hawkes','Hawkes','Poisson'),fontsize=12)
-plt.savefig('/home/luis_souto/Thesis/ESEP/Paper/figures/sensitivity_hb'+st+'.eps',format='eps')
 plt.show()
 
 ## Sensitivity analysis Q0
@@ -356,7 +309,6 @@ plt.plot(Q0v,IVQ0h,'bx')
 plt.xlabel(r'Initial value $Q_0$',fontsize=16)
 plt.ylabel('Implied volatility',fontsize=16)
 plt.legend(('Q-Hawkes','Hawkes','Poisson'),fontsize=12)
-plt.savefig('/home/luis_souto/Thesis/ESEP/Paper/figures/sensitivity_Q0'+st+'.eps',format='eps')
 plt.show()
 
 ## Sensitivity analysis mj
@@ -380,7 +332,6 @@ plt.plot(mjv,IVmjh,'bx')
 plt.xlabel(r'Jump size expectation $\mu_Y$',fontsize=16)
 plt.ylabel('Implied volatility',fontsize=16)
 plt.legend(('Q-Hawkes','Hawkes','Poisson'),fontsize=12)
-plt.savefig('/home/luis_souto/Thesis/ESEP/Paper/figures/sensitivity_mj'+st+'.eps',format='eps')
 plt.show()
 
 ## Sensitivity analysis sj
@@ -405,9 +356,7 @@ plt.plot(sjv,IVsjh,'bx')
 plt.xlabel(r'Jump size volatility $\sigma_Y$',fontsize=16)
 plt.ylabel('Implied volatility',fontsize=16)
 plt.legend(('Q-Hawkes','Hawkes','Poisson'),fontsize=12)
-plt.savefig('/home/luis_souto/Thesis/ESEP/Paper/figures/sensitivity_sj'+st+'.eps',format='eps')
 plt.show()
-
 
 ##
 
