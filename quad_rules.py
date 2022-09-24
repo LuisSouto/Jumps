@@ -3,7 +3,7 @@
 """
 Created on Thu Mar 31 00:09:36 2022
 
-Some cuadrature rules for numerical integration
+Some cuadrature rules for numerical integration.
 
 @author: luis_souto
 """

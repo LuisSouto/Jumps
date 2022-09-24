@@ -20,6 +20,8 @@ Class for the Heston model. The meaning of the parameters is the following:
 import numpy as np
 import scipy.special as sp
 
+import quad_rules as quad
+
 class Heston():
     def __init__(self,S0,V0,r,lamb,nu,eta,rho):
         self.S0   = S0
@@ -32,9 +34,9 @@ class Heston():
         self.rho  = rho
 
     def simul(self,N,n,T):
-        dt = T/(n-1)
-        X = np.zeros((N,n))
-        V = np.zeros((N,n))
+        dt     = T/(n-1)
+        X      = np.zeros((N,n))
+        V      = np.zeros((N,n))
         X[:,0] = self.X0
         V[:,0] = self.V0
 
@@ -131,7 +133,17 @@ class Heston():
         return (np.exp(1j*u*(logS+self.r*t+self.rho/eta*(vt-vs-lamb*nu*t)))
                 *bfk1*g*(eg/et)**(0.5)*2/((eta**2)*(1-eg))
                 *np.exp(lamb/eta**2*(vs-vt))*(vt/(vs*et))**(q/2)*vt)
-    
+
+    # Input for Bermudan options
+    def cf_bermudan(self,k,T,t,n):
+        a,b   = self.logvar_bounds(T)
+        vV,wV = quad.gauss_legendre(a,b,n)   # Logvar discretization
+        vV    = np.exp(vV)
+        cfV   = self.cfcondv_dens(k,t,0,vV,vV[:,np.newaxis,np.newaxis])*wV
+
+        return cfV,vV
+
+    # Boundaries of the log-variance
     def logvar_bounds(self,t,tol_l=1e-8,tol_u=1e-8):
         V0   = self.V0
         lamb = self.lamb

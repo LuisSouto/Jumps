@@ -242,7 +242,7 @@ def bermudan_put_3D(S,K,T,r,cm,M,cfV=None,cfQ=None,N1=2**6,n1=2**6,
     cfQ: callable
        Characteristic function of the jump contribution.
     M: int
-       Number of exercise dates of the option.
+       Number of exercise dates.
     N1: int
        Number of COS terms in the asset dimension.
     n1: int
@@ -257,39 +257,41 @@ def bermudan_put_3D(S,K,T,r,cm,M,cfV=None,cfQ=None,N1=2**6,n1=2**6,
     """
 
     # Parameters
-    x  = np.log(S/K)
-    dt = T/M
-    L  = 6.5
+    x     = np.log(S/K)
+    dt    = T/M
+    L     = 6.5                   # Determines domain size in the COS method. May require tuning.
     a1,b1 = trunc_interval(cm,L)
-    k1 = (np.arange(N1)*np.pi/(b1-a1))[:,np.newaxis]
+    k1    = (np.arange(N1)*np.pi/(b1-a1))[:,np.newaxis]
 
     cfvNone = cfV is None
     cfQNone = cfQ is None
-    
-    # Fourier cosine coefficients payoff function
-    Vk = vanilla_coeff(a1,b1,k1,-1)
-    Vk[0] *= 0.5
+
+    # Compute characteristic functions
     if not cfvNone:
-        cf1,v1 = cfV(k1,dt,n1)
+        cf1,v1 = cfV(k1,dt,n1)                     # Characteristic function and nodes
         if not cfQNone:
-            k1 = k1[:,np.newaxis]
-            # Integrated characteristic function
-            cf2,v2 = cfQ(k1,dt,n2)
-            Vk = np.tile(Vk,(1,n1,n2))
+            k1        = k1[:,np.newaxis]
+            cf2,v2    = cfQ(k1,dt,n2)              # Characteristic function and nodes
+            tile_size = (1,n1,n2)
         else:
             v2 = None
-            Vk = np.tile(Vk,(1,n1))
+            tile_size = (1,n1)
     else:
         v1,v2 = None,None
 
-    # xs is the early-exercise point where c = g,
+    # Fourier cosine coefficients payoff function
+    Vk     = vanilla_coeff(a1,b1,k1,-1)
+    Vk[0] *= 0.5
+    Vk     = np.tile(Vk,tile_size)
+
+    # Apply Newton-Raphson to find exercise value
     xs = np.zeros_like(Vk[0])  # initial value
     Bk = np.zeros_like(Vk,dtype=complex)
     for m in range(M-1,0,-1):
         # Summations in V and Q for the continuation value
         if (not cfvNone) and (not cfQNone):
             for i in range(N1):
-                Bk[i]  = np.dot(cf1[i],np.dot(Vk[i],cf2[i]))
+                Bk[i]  = np.dot(cf1[:,i,:],np.dot(Vk[i],cf2[i]))
         elif not cfvNone:
             Bk = (Vk*cf1).sum(-1).T
         xs = newton_bermudan(a1,b1,k1,xs,Bk,K,r,dt)
@@ -298,7 +300,7 @@ def bermudan_put_3D(S,K,T,r,cm,M,cfV=None,cfQ=None,N1=2**6,n1=2**6,
     # Fourier cosine coefficients density function
     if (not cfvNone) and (not cfQNone):
         for i in range(N1):
-            Bk[i] = np.dot(cf1[i],np.dot(Vk[i],cf2[i]))
+            Bk[i] = np.dot(cf1[:,i,:],np.dot(Vk[i],cf2[i]))
         ccom = np.dot(Bk.transpose((1,2,0)),np.exp(1j*k1.squeeze(axis=-1)*(x-a1)))
     elif not cfvNone:
         Bk   = (Vk*cf1).sum(2)[:,:,np.newaxis]

@@ -12,7 +12,7 @@ It can be used to replicate the results in our paper "A new self-exciting
 jump-diffusion model for option pricing".
 """
 
-## %% Load modules
+## Load modules
 
 import sys
 import numpy as np
@@ -32,10 +32,15 @@ from pricing_functions import price_vanilla
 
 np.set_printoptions(threshold=sys.maxsize)
 
+## Characteristic function Bates model for Bermudan options
+
+def bates_cf_bermudan(u,t,n,heston_cf_bermudan,poi_cf):
+    cfV,vV = heston_cf_bermudan(u,t,n)
+    return cfV*poi_cf(u,t),vV
+
 ## %% Initialize parameters
 st = 'E'                   # Scenario
 T  = 1                     # Maturity
-nT = 300
 N  = 10000                 # MC paths
 S0 = np.array([9,10,11])   # Asset's initial value
 K  = 10                    # Strike
@@ -80,31 +85,15 @@ heston_e = JumpDiffusion(heston,qhawk)
 heston_h = JumpDiffusion(heston,hawk)
 heston_p = JumpDiffusion(heston,poi)
 
-# Simulate the processes via Monte Carlo. This was done in order to validate
-# the results obtained with the COS method. Now it can be safely removed.
-# J     = np.random.standard_normal((N,))
-# Tx,B  = qhawk.simul(N,T)
-# Th,Bh = hawk.simul(N,T)
-# Ne,Qe = qhawk.compute_intensity(T,Tx,B)
-# Nh,Ih = hawk.compute_intensity(T,Th,Bh)
-# Nh    = Nh.squeeze()
-# S,V   = heston.simul(N,nT,T)
-# S    -= np.log(K)
-# Mq    = Ne*mj+sj*J*np.sqrt(Ne)-eJ*a*((Tx<T)*((T-Tx)*B)).sum(0)-eJ*h0*T
-# Sq    = S[:,-1]+Mq
-# Mh    = (-eJ*hb*T+eJ/b*(h0-hb)*(np.exp(-b*T)-1)
-#          +eJ*a/b*(Bh*(Th<T)*(np.exp(-b*(T-Th))-1)).sum(0)+Nh*mj+sj*J*np.sqrt(Nh))
-# Sh    = S[:,-1]+Mh
-
 ## Compute the density with the COS method
 x0 = np.array([X0[0],V0,Q0])
 
 # Heston-Q-Hawkes
-cfx  = lambda u: heston_e.cf(u,0,0,T,x0)
+cfx  = lambda u: heston_e.cf(u,0,0,T,x0)         # Characteristic function
 cme  = heston_e.cumulants_cos(T)
 cme[0] -= np.log(K)
 L    = 5
-ac   = cme[0]-L*np.sqrt(cme[1]+np.sqrt(cme[2]))
+ac   = cme[0]-L*np.sqrt(cme[1]+np.sqrt(cme[2]))  # Boundaries to plot
 bc   = cme[0]+L*np.sqrt(cme[1]+np.sqrt(cme[2]))
 xc   = np.linspace(ac,bc,100)
 fx2  = COS.density(xc,cfx,cme)
@@ -130,18 +119,18 @@ plt.legend(('Q-Hawkes','Hawkes'),fontsize=12)
 plt.show()
 
 ## Price European put options
-x0  = np.array([0,V0,Q0])
 Kv  = S0[0]*np.linspace(0.8,1.2,21,endpoint=True)  # Strike grid
 Tv  = np.linspace(0.1,2,20,endpoint=True)          # Maturity grid
 nK  = Kv.size
 nT  = Tv.size
 
-x0 = np.array([0,V0,Q0])
 Pq,IVq,Delta_q = price_vanilla(heston_e,S0[0],Tv,Kv,r,x0,alpha=-1)
 Ph,IVh,Delta_h = price_vanilla(heston_h,S0[0],Tv,Kv,r,x0,alpha=-1)
 Pp,IVp,Delta_p = price_vanilla(heston_p,S0[0],Tv,Kv,r,x0,alpha=-1)
 
-## Plot the results
+## Plot the results for a particular strike and maturity
+
+# Fixed strike
 idK = 10
 plt.figure()
 plt.plot(Tv,IVq[:,idK],'r*')
@@ -161,6 +150,7 @@ plt.ylabel(r'Delta $\Delta$',fontsize=16)
 plt.legend(('Q-Hawkes','Hawkes','Poisson'),fontsize=12,loc='lower right')
 plt.show()
 
+# Fixed maturity
 idT = 9
 plt.figure()
 plt.plot(Kv,IVq[idT,:],'r*')
@@ -181,61 +171,62 @@ plt.legend(('Q-Hawkes','Hawkes','Poisson'),fontsize=12)
 plt.show()
 
 ## Price Bermudan put options
-cfV   = lambda u,t,vt,vs: heston.cfcondv_dens(u,t,0,vt,vs)
-cfPoi = lambda u,t,vt,vs: cfV(u,t,vt,vs)*poi.cf_cj(u,0,t,Q0)
-cfQ   = lambda u,t,qt,qs: qhawk.cf_integral(u,qt,t,qs,vectorize=True)
-cfH   = lambda u,t,qt,qs: hawk.cf_cossum(u,t,qt,qs)
+cfV     = lambda u,t,n: heston.cf_bermudan(u,Tv[idT],t,n)
+cfPoi   = lambda u,t:   poi.cf_cj(u,0,t,Q0)
+cfBates = lambda u,t,n: bates_cf_bermudan(u,t,n,cfV,cfPoi)
+cfQ     = lambda u,t,n: qhawk.cf_bermudan(u,t,n)
+cfH     = lambda u,t,n: hawk.cf_bermudan(u,t,n)
 
-av,bv = heston.logvar_bounds(Tv[idT]) # Boundaries for the variance
+av,bv = heston.logvar_bounds(Tv[idT])   # Boundaries for the Heston variance
 
-M  = np.arange(1,11) # Exercise dates
-nM = M.size
-Pq2  = np.zeros((nM,))
+nM   = 10
+M    = np.arange(1,nM+1)                # Number of exercise dates
+Pq2  = np.zeros((nM,))                  # Prices
 Pp2  = np.zeros_like(Pq2)
 Ph2  = np.zeros_like(Pq2)
-IVbe = np.zeros_like(Pq2)
+IVbe = np.zeros_like(Pq2)               # Implied volatilities
 IVbh = np.zeros_like(Pq2)
 IVbp = np.zeros_like(Pq2)
 
 time_e = 0
 time_h = 0
 time_p = 0
-nrep   = 1
+nrep   = 1                              # Number of repetitions (for profiling purposes)
 for k in range(nrep):
     for i in range(nM):
         # Heston-Q-Hawkes
-        cme = heston_e.cumulants_cos(Tv[idT]/M[i])
-        cme[0] -= np.log(Kv[idK])
-        time1   = time.time()
-        Vb,Qb,Pb = COS.bermudan_put_3D(S0[0],Kv[idK],Tv[idT],r,cme,av,bv,cfV,
-                                       cfQ,M[i],N1=2**6,nV=2**5,nQ=2**5)
+        cme      = heston_e.cumulants_cos(Tv[idT]/M[i])
+        cme[0]  -= np.log(Kv[idK])
+        time1    = time.time()
+        Pb,Vb,Qb = COS.bermudan_put_3D(S0[0],Kv[idK],Tv[idT],r,cme,M[i],cfV,
+                                       cfQ,N1=2**6,n1=2**5,n2=2**5)
         time_e += (time.time()-time1)
         Pq2[i]  = CubicSpline(Vb,Pb[:,Q0,:],axis=0)(V0)
         IVbe[i] = bs.implied_volatility(Pq2[i],S0[0],Kv[idK],Tv[idT],r,'p')
-
-        # Bates
-        cmp = heston_p.cumulants_cos(Tv[idT]/M[i])
-        cmp[0] -= np.log(Kv[idK])
-        time1   = time.time()
-        Vbp,Pbp = COS.bermudan_put_3D(S0[0],Kv[idK],Tv[idT],r,cmp,av,bv,cfPoi,
-                                      cfQ,M[i],N1=2**6,nV=2**5,dim3=False)
+        #
+        # Bates model
+        cmp         = heston_p.cumulants_cos(Tv[idT]/M[i])
+        cmp[0]     -= np.log(Kv[idK])
+        time1       = time.time()
+        Pbp,Vbp,Qbp = COS.bermudan_put_3D(S0[0],Kv[idK],Tv[idT],r,cmp,M[i],cfBates,
+                                          N1=2**6,n1=2**5)
         time_p += (time.time()-time1)
         Pp2[i]  = CubicSpline(Vbp,Pbp,axis=0)(V0)
         IVbp[i] = bs.implied_volatility(Pp2[i],S0[0],Kv[idK],Tv[idT],r,'p')
 
         # Heston-Hawkes
-        cmh = heston_h.cumulants_cos(Tv[idT]/M[i])
-        cmh[0] -= np.log(Kv[idK])
-        time1   = time.time()
-        Vbh,Qbh,Pbh = COS.bermudan_put_3D(S0[0],Kv[idK],Tv[idT],r,cmh,av,bv,cfV,
-                                          cfH,M[i],N1=2**6,nV=2**5,nQ=2**5,
-                                          jump=False)
+        cmh         = heston_h.cumulants_cos(Tv[idT]/M[i])
+        cmh[0]     -= np.log(Kv[idK])
+        time1       = time.time()
+        Pbh,Vbh,Qbh = COS.bermudan_put_3D(S0[0],Kv[idK],Tv[idT],r,cmh,M[i],cfV,
+                                          cfH,N1=2**6,n1=2**5,n2=2**5)
         time_h += (time.time()-time1)
         Pbh     = CubicSpline(Qbh,Pbh,axis=1)
         Ph2[i]  = CubicSpline(Vbh,Pbh(Q0))(V0)
         IVbh[i] = bs.implied_volatility(Ph2[i],S0[0],Kv[idK],Tv[idT],r,'p')
 
 print(time_e/nrep,time_h/nrep,time_p/nrep)
+
 ## Plot the results
 plt.figure()
 plt.plot(M,IVbe,'r*')
@@ -245,7 +236,6 @@ plt.xlabel('Exercise dates',fontsize=16)
 plt.ylabel('Implied volatility',fontsize=16)
 plt.legend(('Q-Hawkes','Hawkes','Poisson'),fontsize=12)
 plt.show()
-
 
 ## Sensitivity analysis alpha
 av  = b*np.linspace(0.01,0.999,20,endpoint=True)
@@ -270,7 +260,7 @@ nb  = bv.size
 Pbe,IVbe = heston_e.sens_an(S0[0],T,S0[0],bv,'b')
 Pbh,IVbh = heston_h.sens_an(S0[0],T,S0[0],bv,'b')
 
-## %% Plot the results
+## Plot the results
 plt.figure()
 plt.plot(bv,IVbe,'r*')
 plt.plot(bv,IVbh,'bx')
@@ -286,7 +276,7 @@ nhb  = hbv.size
 Phbe,IVhbe = heston_e.sens_an(S0[0],T,S0[0],hbv,['hb'])
 Phbh,IVhbh = heston_h.sens_an(S0[0],T,S0[0],hbv,['hb'])
 
-## %% Plot the results
+## Plot the results
 plt.figure()
 plt.plot(hbv,IVhbe,'r*')
 plt.plot(hbv,IVhbh,'bx')
@@ -302,7 +292,7 @@ nQ0  = Q0v.size
 PQ0e,IVQ0e = heston_e.sens_an(S0[0],T,S0[0],Q0v,['Q0'])
 PQ0h,IVQ0h = heston_h.sens_an(S0[0],T,S0[0],Q0v,['Q0'])
 
-## %% Plot the results
+## Plot the results
 plt.figure()
 plt.plot(Q0v,IVQ0e,'r*')
 plt.plot(Q0v,IVQ0h,'bx')
@@ -325,7 +315,7 @@ mjlist = np.array(mjlist,dtype='object')
 Pmje,IVmje = heston_e.sens_an(S0[0],T,S0[0],mjlist,['mJ','eJ','cfJ'])
 Pmjh,IVmjh = heston_h.sens_an(S0[0],T,S0[0],mjlist,['mJ','eJ','cfJ'])
 
-## %% Plot the results
+## Plot the results
 plt.figure()
 plt.plot(mjv,IVmje,'r*')
 plt.plot(mjv,IVmjh,'bx')
@@ -349,7 +339,7 @@ mjlist = np.array(mjlist,dtype='object')
 Psje,IVsje = heston_e.sens_an(S0[0],T,S0[0],mjlist,['mJ','eJ','cfJ'])
 Psjh,IVsjh = heston_h.sens_an(S0[0],T,S0[0],mjlist,['mJ','eJ','cfJ'])
 
-## %% Plot the results
+## Plot the results
 plt.figure()
 plt.plot(sjv,IVsje,'r*')
 plt.plot(sjv,IVsjh,'bx')

@@ -208,7 +208,7 @@ class QHawkes(PointP):
 
         return np.exp(self.hb*t/(2*a)*(b-a-a*iu-fu))*f1**(self.hb/a)*f2**Q
 
-    def cf_integral(self,v,x,t,Q,vectorize=True):
+    def cf_integral(self,v,t,x,Q,vectorize=True):
         """ Integral of the characteristic function with respect to u. This is
         Equation (20) in [1].
 
@@ -285,6 +285,13 @@ class QHawkes(PointP):
                 res[i] = np.sum(th[:i+1]*bn[:i+1,:,i-1:i]*qh[:i+1,i-1:i,:],0)
 
             return res*(2*fu/hu)**(self.hb/a)*np.exp(self.hb*t/(2*a)*(b-a-fu-a*iu))
+
+    def cf_bermudan(self,k,t,n):
+        vQ  = np.arange(n)
+        cfQ = self.cf_integral(k.squeeze(),t,n-1,n-1)
+        cfQ = cfQ.transpose(2,1,0)
+
+        return cfQ,vQ
 
     def mean_cj(self,t):
         """ Mean of the compensated jump term Mt (see [1])
