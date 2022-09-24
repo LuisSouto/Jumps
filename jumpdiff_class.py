@@ -113,7 +113,7 @@ class JumpDiffusion():
                 x0 = np.array([0,self.dp.V0,self.jp.Q0])
             except:
                 x0 = np.array([0,self.jp.Q0])
-            P[i],IV[i] = price_vanilla(S,T,K,self.dp.r,x0)
+            P[i],IV[i],z = price_vanilla(self,S,T,K,self.dp.r,x0)
 
         self.jp.set_param(**old_param)
         return P.squeeze(),IV.squeeze()

@@ -44,15 +44,15 @@ fP = lambda u: cf_poi(u,lamb)
 ## Compute error
 COS_errU = np.zeros((kU.size,))
 COS_errP = np.zeros((kP.size,))
-fUref = 1/(M+1)                 # True values (uniform)
-fPref = poisson.pmf(xP0,lamb)   # True values (poisson)
+fUref    = 1/(M+1)                 # True values (uniform)
+fPref    = poisson.pmf(xP0,lamb)   # True values (poisson)
 
 for i in range(kU.size):
-    fxU = COS.density_dis(xU0,fU,kU[i])
+    fxU         = COS.density_dis(xU0,fU,kU[i])
     COS_errU[i] = np.abs(fxU-fUref)
 
 for i in range(kP.size):
-    fxP = COS.density_dis(xP0,fP,kP[i])
+    fxP         = COS.density_dis(xP0,fP,kP[i])
     COS_errP[i] = np.abs(fxP-fPref)
 
 ## Plot results

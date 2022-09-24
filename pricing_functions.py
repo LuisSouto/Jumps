@@ -7,7 +7,7 @@ Created on 3/7/22 17:28
 
 @Software: PyCharm
 
-Contains pricing functions for European and Bermudan options. The pricing algorithm is
+Contains pricing functions for European options. The pricing algorithm is
 the COS method.
 """
 
