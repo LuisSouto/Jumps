@@ -15,4 +15,4 @@ The repository currently contains the following processes:
 
 The pricing methodology is based on the COS method (cos_method.py). Each class contains also a Monte Carlo (MC) style simulation function, so with few adaptations it is also possible to price using MC.
 
-The main script is hestonjd_main.py, which compares the Bates (Heston+Poisson) model, the Heston-Hawkes model (HH) and the Heston-Queue-Hawkes (HQH). It mainly replicates the results of the paper mentioned above.
+The main script is hestonjd_main.py, which compares the Bates (Heston+Poisson) model, the Heston-Hawkes model (HH) and the Heston-Queue-Hawkes model (HQH). It mainly replicates the results of the paper mentioned above.
