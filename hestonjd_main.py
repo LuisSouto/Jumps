@@ -55,12 +55,12 @@ lamb = 5        # Speed of mean-reversion
 nu   = 0.16     # Long-term variance
 
 # Jump parameters
-a  = 2.9                   # Clustering rate
+a  = 2.                   # Clustering rate
 b  = 3.                    # Expiration rate
 hb = 1.1                   # Baseline intensity
 Q0 = 2                     # Initial activation
 h0 = hb + a*Q0             # Initial intensity
-mj = 0.3                   # Mean of log-jump size
+mj = -0.3                   # Mean of log-jump size
 sj = 0.4                   # Volatility of log-jump size
 
 # Save settings in external file
@@ -86,7 +86,7 @@ heston_h = JumpDiffusion(heston,hawk)
 heston_p = JumpDiffusion(heston,poi)
 
 ## Compute the density with the COS method
-x0 = np.array([X0[0],V0,Q0])
+x0 = np.array([0,V0,Q0])
 
 # Heston-Q-Hawkes
 cfx  = lambda u: heston_e.cf(u,0,0,T,x0)         # Characteristic function
